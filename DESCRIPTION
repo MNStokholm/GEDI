@@ -1,0 +1,23 @@
+Package: GEDI
+Title: Gene Expression Data Integration
+Version: 1.0
+Date: 2021-06-23
+biocViews:
+Imports: DESeq2, gcrma, limma, biomaRt, WGCNA, edgeR, ggplot2,
+        progress, reshape2, rpart, stats, graphics, utils,
+        BiocParallel, Biobase, SummarizedExperiment, affy, curl, Rdpack
+Depends: R (>= 4.0.0)
+Enhances:
+Author: 
+    Mathias N. Stokholm  [aut, cre] <MNStokholm@gmail.com>,
+    Maria Belen Rabaglino [aut],
+    Haja Kadarmideen [aut] <hajak@dtu.dk>
+Maintainer: Mathias N. Stokholm <MNStokholm@gmail.com>
+Description: Enables automatic transcriptomic data integration with a pipeline consisting of four functions that together reads, re-annotates and merges the datasets after which the batch effect is removed. Unsupervised and supervised machine learning methods ensure that the batch correction and data integration was successful. 
+License: CC BY-NC-SA 4.0
+Encoding: UTF-8
+RdMacros: Rdpack
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+NeedsCompilation: no
+Packaged: 2021-06-22 23:13:50 UTC; mathi
