@@ -4,7 +4,7 @@
 \alias{BatchCorrection}
 \title{Remove batch effect from integrated gene expression data}
 \usage{
-BatchCorrection(Data, batch, visualise = TRUE, status = NULL)
+BatchCorrection(Data, batch, visualize = TRUE, status = NULL, boxplot.type = "rle")
 }
 \arguments{
 \item{Data}{A \code{data.frame} or \code{matrix} of integrated gene expression
@@ -13,13 +13,17 @@ data with multiple batches. Columns contain samples, and rows are genes.}
 \item{batch}{Character vector that describes which sample is in what batch.
 \code{length(batch) = ncol(Data)}.}
 
-\item{visualise}{(Optional) Logical value. If \code{TRUE}, the batch correction
-is verified using PCA plots and boxplots that visualise the data before and
+\item{visualize}{(Optional) Logical value. If \code{TRUE}, the batch correction
+is verified using PCA plots and boxplots that visualize the data before and
 after the batch correction.}
 
 \item{status}{(Optional) Character vector that describes the samples' status,
 e.g. treated or control. \code{BatchCorrection} only uses the \code{status}
-argument to make plots, i.e. when \code{visualise = TRUE}.}
+argument to make plots, i.e. when \code{visualize = TRUE}.}
+
+\item{boxplot.type}{(optional) Character that describes which type of boxplot
+to use if \code{visualize=TRUE}. Default is \code{"rle"} resulting in a RLE plot.
+\code{"normal"} results in a regular boxplot.}
 }
 \value{
 A \code{data.frame} with the same dimensions as the \code{Data} argument.
@@ -28,9 +32,11 @@ A \code{data.frame} with the same dimensions as the \code{Data} argument.
 The \code{BatchCorrection} function removes the batch effect
 in an integrated gene expression dataset using functions inspired by
 \code{sva::ComBat} and \code{sva::ComBat_seq} from the \code{sva}
-package \insertCite{sva}{GEDI}. This function also allows users to visualise the data before and after
-the batch correction with principal component analysis (PCA) plots and boxplots
-to verify the batch correction.
+package \insertCite{sva}{GEDI}. This function verifies itself by calculating
+the mean and standard deviation for each batch before and after the correction.
+If the means of the batches are similar, then the batch effect has been removed.
+Optionally, the verification can be supported visually with PCA and RLE plots
+before and after the batch correction. The RLE plots can be replaced with boxplots.
 }
 \details{
 Bioconductor's \code{sva} package does not remove batch effect in genes with
@@ -40,11 +46,14 @@ function uses modified versions of the \code{sva::ComBat} and
 The modified \code{ComBat_seq} function corrects data for the batch effect
 like the modified \code{ComBat} function, but only for RNA-seq count data.
 
-By setting \code{visualise = TRUE}, the \code{BatchCorrection} function
-verifies the batch correction visually. This produces a PCA plot and a boxplot
+The \code{BatchCorrection} function verifies the batch correction by calculating
+and printing the mean and the standard deviation of the gene expressions in each batch.
+If the means of the batches are similar, then the batch effect has been removed.
+By setting \code{visualize = TRUE}, the \code{BatchCorrection} function
+supports the verification visually. This produces a PCA plot and an RLE plot
 for the data before and after the batch correction. If the dataset contains
 count data, the \code{\link[DESeq2:varianceStabilizingTransformation]{DESeq2::varianceStabilizingTransformation}} function
-transforms the dataset. This transformation is only used for verification and
+transforms the dataset first. This transformation is only used for verification and
 is not permanent.
 
 The PCA plot is a scatterplot where the x- and y-axis are the first two principal
@@ -55,9 +64,11 @@ samples based on some other variable within each batch before the batch effect w
 removed. In that case, it must still be possible to differentiate the samples
 after the batch correction.
 
-The boxplots show the distribution of gene expression values for all samples.
-After the batch correction, the distribution should be identical across all
-batches.
+The RLE plots are boxplots with log-transformed data subtracted the median of
+each row. This plot shows the distribution of gene expression values for all samples.
+After the batch correction, the distribution should be similar across all
+batches. Normal boxplots shows the same thing, but unlike RLE, the data is
+not transformed.
 }
 \examples{
 \dontrun{
