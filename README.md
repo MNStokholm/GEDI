@@ -51,16 +51,20 @@ reporter IDs refer to both probe IDs in microarray data and read IDs in
 RNA-seq data. Reporter IDs covered by the *biomaRt* package have a
 corresponding BioMart attribute. All attributes can be found using the
 `BM_attributes()` function. The `BatchCorrection()` function removes the
-batch effect from the integrated dataset. Optionally the function can
-verify itself visually with a before/after comparison. A Principal
-Component Analysis (PCA) plot is constructed to check if the data
-aggregates in batches, and a boxplot is used to show the distribution of
-the data. Finally, the `VerifyGEDI()` function verifies the
-transcriptomic data integration using one of two supervised machine
-learning models to predict the samples’ status in one batch based on the
-remaining batches’ samples. Here, a sample’s status refers to a variable
-that describes, e.g. if the sample is sick or healthy. The status
-variable does not have to be binary.
+batch effect from the integrated dataset. The BatchCorrection function
+verifies itself by calculating and printing the mean and standard
+deviations of the gene expressions for each batch before and after the
+batch correction. If the means of the batches are similar, then the
+batch effect has been removed. Optionally, the verification can be
+supported visually with a before/after comparison of Principal Component
+Analysis (PCA) plots and RLE plots. A PCA plot is constructed to check
+if the data aggregates in batches, and an RLE plot is used to show the
+distribution of the data. Finally, the `VerifyGEDI()` function verifies
+the transcriptomic data integration using one of two classifiers to
+predict the samples’ status in one batch based on the remaining batches’
+samples. Here, a sample’s status refers to a variable that describes,
+e.g. if the sample is sick or healthy. The status variable does not have
+to be binary.
 
 ## Setting up the data
 
@@ -178,6 +182,14 @@ can be integrated.
 dat <- GEDI(datasets, attributes = attr, BioMart = TRUE,
             species = "btaurus", path = PATH_TO_DATA_FOLDERS)
 #> Connecting to BioMart...
+#> Ensembl site unresponsive, trying useast mirror
+#> Ensembl site unresponsive, trying useast mirror
+#> Ensembl site unresponsive, trying asia mirror
+#> Ensembl site unresponsive, trying asia mirror
+#> Ensembl site unresponsive, trying asia mirror
+#> Ensembl site unresponsive, trying asia mirror
+#> Ensembl site unresponsive, trying asia mirror
+#> Ensembl site unresponsive, trying useast mirror
 #> Invalid BioMart attribute, NA in agilent_data
 #> Reading annotation file ('annot.txt') for agilent_data
 dim(dat)
@@ -209,17 +221,23 @@ cData <- BatchCorrection(dat, batch, status = status)
 #> Fitting L/S model and finding priors
 #> Finding parametric adjustments
 #> Adjusting the Data
+#>    Before                  After                 
+#> B1 "M (SD) = 8.86 (0.02)"  "M (SD) = 9.06 (0.02)"
+#> B2 "M (SD) = 8.06 (0.02)"  "M (SD) = 9.06 (0.02)"
+#> B3 "M (SD) = 10.34 (0.00)" "M (SD) = 9.06 (0.00)"
 ```
 
 <img src="man/figures/README-BatchCorrection-1.png" width="100%" />
 
+The output of the BatchCorrection function clearly shows that the mean
+gene expression for every batch is similar after the batch correction.
 The figure above shows the resulting figure from the BatchCorrection
 function. Here, the data is aggregated in batches in the Principal
 Component Analysis (PCA) plot before the batch correction, and the data
-distribution is uneven in the boxplot. After the batch correction, the
-data no longer aggregate in clusters, and all the samples have the same
-distribution. Based on this, the batch effect have successfully been
-removed.
+distribution is uneven in the RLE plot. After the batch correction, the
+data no longer aggregate in clusters, and all the samples have a similar
+distribution. Based on the numeric output and the figure, the batch
+effect have successfully been removed.
 
 Finally, the `VerifyGEDI()` function is used to verify that the
 integration of the three transcriptomic datasets have been successful.
