@@ -1,14 +1,17 @@
+#### Roxygen ####
 #' @title Remove batch effect from integrated gene expression data
 #'
 #' @description The \code{BatchCorrection} function removes the batch effect
 #' in an integrated gene expression dataset using functions inspired by
 #' \code{sva::ComBat} and \code{sva::ComBat_seq} from the \code{sva}
-#' package \insertCite{sva}{GEDI}. This function also allows users to visualise the data before and after
-#' the batch correction with principal component analysis (PCA) plots and boxplots
-#' to verify the batch correction.
+#' package \insertCite{sva}{GEDI}. This function verifies itself by calculating
+#' the mean and standard deviation for each batch before and after the correction.
+#' If the means of the batches are similar, then the batch effect has been removed.
+#' Optionally, the verification can be supported visually with PCA and RLE plots
+#' before and after the batch correction. The RLE plots can be replaced with boxplots.
 #'
 #' @name BatchCorrection
-#' @usage BatchCorrection(Data, batch, visualise = TRUE, status = NULL)
+#' @usage BatchCorrection(Data, batch, visualize = TRUE, status = NULL, boxplot.type = "rle")
 #'
 #' @param Data A \code{data.frame} or \code{matrix} of integrated gene expression
 #' data with multiple batches. Columns contain samples, and rows are genes.
@@ -16,13 +19,17 @@
 #' @param batch Character vector that describes which sample is in what batch.
 #' \code{length(batch) = ncol(Data)}.
 #'
-#' @param visualise (Optional) Logical value. If \code{TRUE}, the batch correction
-#' is verified using PCA plots and boxplots that visualise the data before and
+#' @param visualize (Optional) Logical value. If \code{TRUE}, the batch correction
+#' is verified using PCA plots and boxplots that visualize the data before and
 #' after the batch correction.
 #'
 #' @param status (Optional) Character vector that describes the samples' status,
 #' e.g. treated or control. \code{BatchCorrection} only uses the \code{status}
-#' argument to make plots, i.e. when \code{visualise = TRUE}.
+#' argument to make plots, i.e. when \code{visualize = TRUE}.
+#'
+#' @param boxplot.type (optional) Character that describes which type of boxplot
+#' to use if \code{visualize=TRUE}. Default is \code{"rle"} resulting in a RLE plot.
+#' \code{"normal"} results in a regular boxplot.
 #'
 #'
 #' @details
@@ -33,11 +40,14 @@
 #' The modified \code{ComBat_seq} function corrects data for the batch effect
 #' like the modified \code{ComBat} function, but only for RNA-seq count data.
 #'
-#' By setting \code{visualise = TRUE}, the \code{BatchCorrection} function
-#' verifies the batch correction visually. This produces a PCA plot and a boxplot
+#' The \code{BatchCorrection} function verifies the batch correction by calculating
+#' and printing the mean and the standard deviation of the gene expressions in each batch.
+#' If the means of the batches are similar, then the batch effect has been removed.
+#' By setting \code{visualize = TRUE}, the \code{BatchCorrection} function
+#' supports the verification visually. This produces a PCA plot and an RLE plot
 #' for the data before and after the batch correction. If the dataset contains
 #' count data, the \code{\link[DESeq2:varianceStabilizingTransformation]{DESeq2::varianceStabilizingTransformation}} function
-#' transforms the dataset. This transformation is only used for verification and
+#' transforms the dataset first. This transformation is only used for verification and
 #' is not permanent.
 #'
 #' The PCA plot is a scatterplot where the x- and y-axis are the first two principal
@@ -48,9 +58,11 @@
 #' removed. In that case, it must still be possible to differentiate the samples
 #' after the batch correction.
 #'
-#' The boxplots show the distribution of gene expression values for all samples.
-#' After the batch correction, the distribution should be identical across all
-#' batches.
+#' The RLE plots are boxplots with log-transformed data subtracted the median of
+#' each row. This plot shows the distribution of gene expression values for all samples.
+#' After the batch correction, the distribution should be similar across all
+#' batches. Normal boxplots shows the same thing, but unlike RLE, the data is
+#' not transformed.
 #'
 #' @return
 #' A \code{data.frame} with the same dimensions as the \code{Data} argument.
@@ -60,10 +72,12 @@
 #'
 #' @importFrom reshape2 melt
 #' @importFrom ggplot2 ggplot geom_point xlab ylab ggtitle theme geom_boxplot
-#' aes_string element_blank aes
+#' aes_string element_blank aes coord_cartesian
 #' @importFrom DESeq2 DESeqDataSetFromMatrix varianceStabilizingTransformation
 #' @importFrom SummarizedExperiment assay
 #' @importFrom grid viewport grid.newpage pushViewport grid.layout
+#' @importFrom grDevices boxplot.stats
+#' @importFrom stats median
 #' @seealso
 #' \code{\link{ReadGE}}
 #' \code{\link{GEDI}}
@@ -96,30 +110,14 @@
 #' }
 #' @export
 
-
-BatchCorrection <- function(Data, batch, visualise = TRUE, status = NULL){
+#### Code ####
+BatchCorrection <- function(Data, batch, visualize = TRUE, status = NULL,
+                            boxplot.type = "rle"){
   ### Check inputs ###
-  .BatchCorrection.checkInput(Data, batch,visualise, status)
-  visualise <- .onlyFirstElement(visualise)
+  .BatchCorrection.checkInput(Data, batch,visualize, status, boxplot.type)
+  visualize <- .onlyFirstElement(visualize)
 
-  ### Remove rows with zero variance in any batch ###
-  # zero.rows.lst <- lapply(levels(as.factor(batch)), function(batch_level){
-  #   if(sum(batch==batch_level)>1){
-  #     return(which(apply(Data[, batch==batch_level], 1, function(x){var(x)==0})))
-  #   }else{
-  #     return(integer(0))
-  #   }
-  # })
-  # zero.rows <- Reduce(union, zero.rows.lst)
-  # keep.rows <- setdiff(1:nrow(Data), zero.rows)
-  #
-  # if (length(zero.rows) > 0) {
-  #   cat(sprintf("Found %d genes with uniform expression within a single batch (all zeros); these are removed from the corrected Data\n", length(zero.rows)))
-  #   Data <- Data[keep.rows, ]
-  # }
-
-  #Data = data.matrix(Data)
-  #counts=all(apply(Data,2,function(x) x%%1)==0)
+  # Check if 'Data' contains count data
   counts = all(apply(Data,2,class)=="integer")
 
   if (counts){
@@ -132,17 +130,33 @@ BatchCorrection <- function(Data, batch, visualise = TRUE, status = NULL){
   }
   cData = as.data.frame(cData)
 
-  if(visualise){
-    .Visualise(Data,cData,
+  ## Calculate mean (M) and standard deviation (SD) for each group
+  ## before and after batch correction
+  # Before
+  df <- data.frame(GeneExp = apply(Data,2,mean), Group = batch)
+  # After
+  cdf <- data.frame(GeneExp = apply(cData,2,mean), Group = batch)
+  # Create and print table
+  res <- rbind(
+    with(df, tapply(GeneExp, Group, function(x) {sprintf("M (SD) = %1.2f (%1.2f)", mean(x), sd(x))})),
+    with(cdf, tapply(GeneExp, Group, function(x) {sprintf("M (SD) = %1.2f (%1.2f)", mean(x), sd(x))}))
+  )
+  rownames(res) <- c("Before", "After")
+  print(t(res))
+
+  ## Make visualisations
+  if(visualize){
+    .visualize(Data,cData,
                batch=batch,
                status=status,
-               counts=counts)
+               counts=counts,
+               boxplot.type = boxplot.type)
   }
 
   return(cData)
 }
 
-.BatchCorrection.checkInput <- function(Data, batch,visualise, status){
+.BatchCorrection.checkInput <- function(Data, batch,visualize, status, boxplot.type){
   ## Data ##
   .checkClass(Data,c("data.frame","matrix","array"))
   if(any(dim(Data)==0)){
@@ -160,7 +174,7 @@ BatchCorrection <- function(Data, batch, visualise = TRUE, status = NULL){
                   ncol(Data),length(batch)))
   }
   ## Validation plot ##
-  .checkClass(visualise, "logical")
+  .checkClass(visualize, "logical")
   if(!is.null(status)){
     .checkClass(status,c("character","factor","numeric"))
     if(length(status) != ncol(Data)){
@@ -169,9 +183,17 @@ BatchCorrection <- function(Data, batch, visualise = TRUE, status = NULL){
                     ncol(Data),length(status)))
     }
   }
+  .checkClass(boxplot.type, "character")
+  validType=c("normal","rle")
+  if(!tolower(boxplot.type) %in% validType){
+    n.boxplot.type = length(validType)
+    boxplot.type.msg = paste(paste(dQuote(validType[-n.boxplot.type]),collapse=", "),
+                      "and",dQuote(validType[n.boxplot.type]),sep=" ")
+    stop(gettextf("Invalid 'boxplot.type' chosen. Valid options are: %s",boxplot.type.msg))
+  }
 }
 
-.Visualise <- function(Data,cData,batch,status,counts){
+.visualize <- function(Data,cData,batch,status,counts,boxplot.type){
   Data = as.data.frame(Data)
   if(counts){
     coldata <- data.frame(rep(NA,ncol(Data)))
@@ -189,8 +211,15 @@ BatchCorrection <- function(Data, batch, visualise = TRUE, status = NULL){
                          plot.title = "Before batch correction\nPCA plot")
   pca.after <- .PCAplot(cData,batch=batch,status = status,legend=TRUE,
                         plot.title = "After batch correction\nPCA plot")
-  box.before <- .box(Data,batch,plot.title = "Boxplot")
-  box.after <- .box(cData,batch,plot.title = "Boxplot")
+  if (boxplot.type == "rle"){
+    boxplot.before <- .rle(Data,batch,plot.title = "RLE plot")
+    boxplot.after <- .rle(cData,batch,plot.title = "RLE plot")
+  }else if (boxplot.type == "normal"){
+    boxplot.before <- .box(Data,batch,plot.title = "Boxplot")
+    boxplot.after <- .box(cData,batch,plot.title = "Boxplot")
+  }
+
+
 
   vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
   grid.newpage()
@@ -198,8 +227,8 @@ BatchCorrection <- function(Data, batch, visualise = TRUE, status = NULL){
 
   print(pca.before, vp = vplayout(1,1))
   print(pca.after, vp = vplayout(1,2))
-  print(box.before, vp = vplayout(2,1))
-  print(box.after, vp = vplayout(2,2))
+  print(boxplot.before, vp = vplayout(2,1))
+  print(boxplot.after, vp = vplayout(2,2))
 }
 
 .PCAplot <- function(dat,batch,status,legend=FALSE,plot.title=""){
@@ -240,12 +269,36 @@ BatchCorrection <- function(Data, batch, visualise = TRUE, status = NULL){
 }
 
 .box <- function(dat,batch,plot.title){
-  ggplot(data = suppressMessages(melt(dat)), aes_string(x="variable", y="value")) +
+  df <- melt(dat, measure = 1:dim(dat)[2])
+  p0 <- ggplot(data = df, aes_string(x="variable", y="value")) +
     ggtitle(plot.title) +
-    geom_boxplot(aes(fill=rep(batch,each=nrow(dat)))) +
+    geom_boxplot(aes(fill=rep(batch,each=nrow(dat))), outlier.shape = NA) +
     theme(legend.position = "none",
           axis.text.x=element_blank(),
           axis.ticks.x = element_blank())
+  # compute lower and upper whiskers
+  ylim1 = boxplot.stats(df$value)$stats[c(1, 5)]
+
+  # scale y limits based on ylim1
+  p0 + ggplot2::coord_cartesian(ylim = ylim1*1.05)
 }
 
+.rle <- function(dat,batch,plot.title){
+  logDat <- log(dat+1)
+  med <- apply(logDat,1,median)
+  rle <- as.data.frame(apply(logDat, 2, function(x) x - med))
+
+  df <- melt(rle, measure = 1:dim(rle)[2])
+  p0 <- ggplot(data = df, aes_string(x="variable", y="value")) +
+    ggtitle(plot.title) +
+    geom_boxplot(aes(fill=rep(batch,each=nrow(dat))), outlier.shape = NA) +
+    theme(legend.position = "none",
+          axis.text.x=element_blank(),
+          axis.ticks.x = element_blank())
+  # compute lower and upper whiskers
+  ylim1 = boxplot.stats(df$value)$stats[c(1, 5)]
+
+  # scale y limits based on ylim1
+  p0 + ggplot2::coord_cartesian(ylim = ylim1*1.05)
+}
 
