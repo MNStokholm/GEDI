@@ -1,0 +1,4 @@
+dataFolders sources attributes
+1 RNAseq_data RNAseq ensembl_gene_id
+2 affy_data affy affy_bovine
+3 agilent_data agilent NA

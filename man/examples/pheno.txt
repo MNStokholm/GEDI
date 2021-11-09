@@ -1,0 +1,21 @@
+batch status
+1 B1 control
+2 B1 control
+3 B1 control
+4 B1 control
+5 B1 treated
+6 B1 treated
+7 B1 treated
+8 B1 treated
+9 B2 treated
+10 B2 treated
+11 B2 treated
+12 B2 control
+13 B2 control
+14 B2 control
+15 B3 treated
+16 B3 treated
+17 B3 treated
+18 B3 control
+19 B3 control
+20 B3 control
