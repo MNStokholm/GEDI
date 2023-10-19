@@ -26,7 +26,7 @@ You can install the released version of GEDI from
 library(devtools)
 
 # Use devtools to install GEDI from github
-github_install("MNStokholm/GEDI")
+install_github("MNStokholm/GEDI")
 ```
 
 ## Usage
