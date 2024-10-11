@@ -14,8 +14,8 @@ pipelines using only four functions.
 
 -   [Mathias N. Stokholm](https://github.com/MNStokholm)
     (<MNStokholm@gmail.com>)
--   Maria B. Rabaglino
--   Haja N. Kadarmideen (<hajak@dtu.dk>)
+-   Maria B. Rabaglino (<m.b.rabaglino@uu.nl>)
+-   Haja N. Kadarmideen (<haja.k@anivet.au.dk>)
 
 ## Installation
 
